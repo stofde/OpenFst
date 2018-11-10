@@ -1,0 +1,8 @@
+# OpenFst - Release 1.3
+
+## Windows installation instruction.
+
+### Dependencies:
+
+* dlfcn-win32:x64-windows
+* mman:x64-windows
