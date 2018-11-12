@@ -6,21 +6,43 @@ project (openfst_lib)
 # openfst include directory.
 include_directories(../../src/include)
 
-set(dlfcn-win32_DIR "../../../vcpkg/installed/x64-windows/share/dlfcn-win32")
-set(mman_DIR "../../../vcpkg/installed/x64-windows/share/mman")
 
-include_directories("../../../vcpkg/installed/x64-windows/include/mman")
+if (WIN32)
 
-link_directories("../../../vcpkg/installed/x64-windows/lib")
+	#################################################
+	# windows instructions.
+	#################################################
 
-#if (WIN32)
-  find_package(dlfcn-win32 REQUIRED)
-  set(CMAKE_DL_LIBS dlfcn-win32::dl)
-  include_directories("../../../vcpkg/installed/x64-windows/include")
-#endif ()
+	# static mman include.
+	include_directories( "${VCPKG_ROOT_DIR}/installed/${WIN_BUILD_PREFIX}-windows-static/include/mman" )
 
-#target_link_libraries(${PROJECT_NAME} ${CMAKE_DL_LIBS})
+	# global vcpkg includes.
+	include_directories( "${VCPKG_ROOT_DIR}/installed/${WIN_BUILD_PREFIX}-windows-static/include" )
 
+	# global vcpkg static lib directory.
+	link_directories( "${VCPKG_ROOT_DIR}/installed/${WIN_BUILD_PREFIX}-windows-static/lib" )
+
+	# libs.
+	set (LIBS 
+		mman.lib
+		dl.lib
+	)
+
+	# check if libs exist.
+	if ( EXISTS "${VCPKG_ROOT_DIR}/installed/${WIN_BUILD_PREFIX}-windows-static/lib/mman.lib"
+	AND EXISTS "${VCPKG_ROOT_DIR}/installed/${WIN_BUILD_PREFIX}-windows-static/lib/dl.lib")
+	else()
+		message( FATAL_ERROR "Libraries'${LIBS}' not found" )
+	endif()
+
+else ()
+	#################################################
+	# linux instructions.
+	#################################################
+	message( FATAL_ERROR "specific linux/mac build instructions" )
+endif ()
+
+# large objects expected.
 add_compile_options(-bigobj)
 
 # sources.
@@ -101,7 +123,4 @@ set(SRCS
 # static library.
 add_library(${PROJECT_NAME} STATIC "${SRCS}")
 
-target_link_libraries(${PROJECT_NAME}
-	mman.lib
-	dl.lib
-)
+target_link_libraries( ${PROJECT_NAME} ${LIBS} )
