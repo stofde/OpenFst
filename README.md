@@ -1,6 +1,10 @@
-# OpenFst - Release 1.3
+# OpenFst - Release 1.3.6
 
-## Windows installation instruction.
+## Python Wrapper
+
+TODO:
+
+## Windows installation
 
 Use vcpkg to install dependencies under windows. In order to setup vcpkg for system
 wide usage, execute the following command in the root directory of vcpkg (requires 
