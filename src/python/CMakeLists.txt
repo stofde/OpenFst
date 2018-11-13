@@ -23,21 +23,61 @@ add_custom_target( ReplicatePythonSourceTree ALL ${CMAKE_COMMAND} -P
 include( UseCython )
 
 # openfst include directory.
-include_directories(../../src/include)
+include_directories( ../../src/include )
 
-add_compile_options(-bigobj)
+if (WIN32)
+
+	#################################################
+	# windows instructions.
+	#################################################
+
+	# static mman include.
+	include_directories( "${VCPKG_ROOT_DIR}/installed/${WIN_BUILD_PREFIX}-windows-static/include/mman" )
+
+	# global vcpkg includes.
+	include_directories( "${VCPKG_ROOT_DIR}/installed/${WIN_BUILD_PREFIX}-windows-static/include" )
+
+	# global vcpkg static lib directory.
+	link_directories( "${VCPKG_ROOT_DIR}/installed/${WIN_BUILD_PREFIX}-windows-static/lib" )
+
+	# openfst core lib.
+	link_directories( "${CMAKE_CURRENT_BINARY_DIR}/../../projects/openfst" )
+
+	# find psapi; required by dlfcn-win32.
+	find_library (PSAPI Psapi)
+
+	# set cython libraries.
+	set ( CYTHON_LIBS  
+		openfst_lib
+		dl
+		mman
+		psapi
+	)
+
+	# big objects expected.
+	add_compile_options(-bigobj)
+
+	# ensure static (MT) build of library.
+	set ( CYTHON_CXX_FLAGS /MT )
+
+else ()
+	#################################################
+	# linux instructions.
+	#################################################
+	message( FATAL_ERROR "specific linux/mac build instructions" )
+endif ()
+
 
 # If the pyx file is a C++ file, we should specify that here.
-#set_source_files_properties(
-#  openpyfst.pyx
-#  PROPERTIES CYTHON_IS_CXX TRUE )
+set_source_files_properties(
+	openpyfst.pyx
+	PROPERTIES 
+		CYTHON_IS_CXX TRUE
+)
 
+# add cython module.
 # Multi-file cython modules do not appear to be working at the moment.
-cython_add_module( ${PROJECT_NAME} openpyfst.pyx)
-
-
-#target_link_libraries(${PROJECT_NAME}
-#	openfst_lib  # static openfst lib.
-#	mman.lib
-#	dl.lib
-#)
+cython_add_module( 
+	${PROJECT_NAME} 
+	openpyfst.pyx
+)

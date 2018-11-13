@@ -80,7 +80,7 @@ set( CYTHON_C_EXTENSION "c" )
 # Create a *.c or *.cxx file from a *.pyx file.
 # Input the generated file basename.  The generate file will put into the variable
 # placed in the "generated_file" argument. Finally all the *.py and *.pyx files.
-function( compile_pyx _name generated_file )
+function( cythonize_pyx _name generated_file )
   # Default to assuming all files are C.
   set( cxx_arg "" )
   set( extension ${CYTHON_C_EXTENSION} )
@@ -92,6 +92,17 @@ function( compile_pyx _name generated_file )
   set( pxi_dependencies "" )
   set( c_header_dependencies "" )
   set( pyx_locations "" )
+
+  # append cythonize include directories.
+  foreach( _include_dir ${CYTHONIZE_INCLUDE_DIRS} )
+    set( include_directory_arg ${include_directory_arg} "-I" "${_include_dir}" )
+  endforeach()
+ 
+  # append cythonize library directories.
+  set( library_directory_arg "" )
+  foreach( _lib_dir ${CYTHONIZE_LIBRARY_DIRS} )
+    set( library_directory_arg ${library_directory_arg} "-L" "${_lib_dir}" )
+  endforeach()
 
   foreach( pyx_file ${ARGN} )
     get_filename_component( pyx_file_basename "${pyx_file}" NAME_WE )
@@ -234,6 +245,7 @@ function( compile_pyx _name generated_file )
     #set( include_directory_arg ${include_directory_arg} "-I" "${_include_dir}" )
   endforeach()
 
+
   # Determining generated file name.
   set( _generated_file "${CMAKE_CURRENT_BINARY_DIR}/${_name}.${extension}" )
   set_source_files_properties( ${_generated_file} PROPERTIES GENERATED TRUE )
@@ -242,18 +254,6 @@ function( compile_pyx _name generated_file )
   list( REMOVE_DUPLICATES pxd_dependencies )
   list( REMOVE_DUPLICATES c_header_dependencies )
 
-  # Add the command to run cython compiler.
-  add_custom_command( OUTPUT ${_generated_file}
-	COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup.py -I "some/dir" -I "some/other/dir" myFile.pyx
-    #ARGS ${cxx_arg} ${include_directory_arg} ${version_arg}
-    #${annotate_arg} ${no_docstrings_arg} ${cython_debug_arg} ${CYTHON_FLAGS}
-	#-b
-    #--output-file  ${_generated_file} 
-	#${pyx_locations}
-    #DEPENDS ${pyx_locations} ${pxd_dependencies} ${pxi_dependencies}
-    #IMPLICIT_DEPENDS ${pyx_lang} ${c_header_dependencies}
-    #COMMENT ${comment}
-    )
 
   # Remove their visibility to the user.
   set( corresponding_pxd_file "" CACHE INTERNAL "" )
@@ -261,61 +261,88 @@ function( compile_pyx _name generated_file )
   set( pxd_location "" CACHE INTERNAL "" )
 endfunction()
 
-# cython_add_module( <name> src1 src2 ... srcN )
-# Build the Cython Python module.
-function( cython_add_module _name )
-  set( pyx_module_sources "" )
-  set( other_module_sources "" )
-  foreach( _file ${ARGN} )
-    if( ${_file} MATCHES ".*\\.py[x]?$" )
-      list( APPEND pyx_module_sources ${_file} )
-    else()
-      list( APPEND other_module_sources ${_file} )
-    endif()
-  endforeach()
-  compile_pyx( ${_name} generated_file ${pyx_module_sources} )
-  include_directories( ${PYTHON_INCLUDE_DIRS} )
-  python_add_module( ${_name} ${generated_file} ${other_module_sources} )
-  if( APPLE )
-    set_target_properties( ${_name} PROPERTIES LINK_FLAGS "-undefined dynamic_lookup" )
-  else()
-    target_link_libraries( ${_name} ${PYTHON_LIBRARIES} )
-  endif()
+set ( include_directory_arg "" )
+set ( library_directory_arg "" )
+set ( cython_build_libs "" )
+set ( pyx_sources "" )
+
+function( sample _name )
+
+	if( "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" OR
+	"${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo" )
+		set( cython_debug_arg "--gdb" )
+	endif()
+
+	if( "${PYTHONLIBS_VERSION_STRING}" MATCHES "^2." )
+		set( version_arg "-2" )
+	elseif( "${PYTHONLIBS_VERSION_STRING}" MATCHES "^3." )
+		set( version_arg "-3" )
+	else()
+		set( version_arg )
+	endif()
+
+	# get includes from parent.
+	get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
+	foreach(_include_dir ${dirs})
+		set( include_directory_arg ${include_directory_arg} "-I" "${_include_dir}" )
+	endforeach()
+
+	# get libraries from parent.
+	get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY LINK_DIRECTORIES)
+	foreach(_link_dir ${dirs})
+		set( library_directory_arg ${library_directory_arg} "-L" "${_link_dir}" )
+	endforeach()
+
+	# get libs.
+	foreach(_lib ${CYTHON_LIBS})
+		set( cython_build_libs ${cython_build_libs} "-l" "${_lib}" )
+	endforeach()
+
+	# get cython compiler flags.
+
+	# build sources.
+	foreach(_pyx_file ${ARGN})
+		set( pyx_sources ${pyx_sources} "" "${CMAKE_CURRENT_SOURCE_DIR}/${_pyx_file}" )
+	endforeach()
+	# cythonize compilation command.
+	add_custom_command(OUTPUT "_CYT${_name}"
+		COMMAND (${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
+		${include_directory_arg} # include directories.
+		${library_directory_arg} # library directories.
+		${cython_build_libs} # libraries.
+		-o ${CMAKE_CURRENT_BINARY_DIR} # output directory.
+		-c ${CYTHON_CXX_FLAGS}
+		${version_arg} # python version.
+		${pyx_sources} # pyx files.
+		)
+	)
+
 endfunction()
 
 include( CMakeParseArguments )
-# cython_add_standalone_executable( _name [MAIN_MODULE src3.py] src1 src2 ... srcN )
-# Creates a standalone executable the given sources.
-function( cython_add_standalone_executable _name )
-  set( pyx_module_sources "" )
-  set( other_module_sources "" )
-  set( main_module "" )
-  cmake_parse_arguments( cython_arguments "" "MAIN_MODULE" "" ${ARGN} )
-  include_directories( ${PYTHON_INCLUDE_DIRS} )
-  foreach( _file ${cython_arguments_UNPARSED_ARGUMENTS} )
-    if( ${_file} MATCHES ".*\\.py[x]?$" )
-      get_filename_component( _file_we ${_file} NAME_WE )
-      if( "${_file_we}" STREQUAL "${_name}" )
-        set( main_module "${_file}" )
-      elseif( NOT "${_file}" STREQUAL "${cython_arguments_MAIN_MODULE}" )
-        set( PYTHON_MODULE_${_file_we}_static_BUILD_SHARED OFF )
-        compile_pyx( "${_file_we}_static" generated_file "${_file}" )
-        list( APPEND pyx_module_sources "${generated_file}" )
-      endif()
-    else()
-      list( APPEND other_module_sources ${_file} )
-    endif()
-  endforeach()
 
-  if( cython_arguments_MAIN_MODULE )
-    set( main_module ${cython_arguments_MAIN_MODULE} )
-  endif()
-  if( NOT main_module )
-    message( FATAL_ERROR "main module not found." )
-  endif()
-  get_filename_component( main_module_we "${main_module}" NAME_WE )
-  set( CYTHON_FLAGS ${CYTHON_FLAGS} --embed )
-  compile_pyx( "${main_module_we}_static" generated_file ${main_module} )
-  add_executable( ${_name} ${generated_file} ${pyx_module_sources} ${other_module_sources} )
-  target_link_libraries( ${_name} ${PYTHON_LIBRARIES} ${pyx_module_libs} )
+#  LIBS libs INCLUDES incs SRCS srcs
+
+# cython_add_module( <name> src1 src2 ... srcN )
+# Build the Cython Python module.
+function( cython_add_module _name )
+
+	foreach( _file ${ARGN} )
+		if( ${_file} MATCHES ".*\\.py[x]?$" )
+			list( APPEND pyx_locations ${_file} )
+		else()
+			list( APPEND other_module_sources ${_file} )
+		endif()
+	endforeach()
+
+	# setup.
+	sample( ${_name} ${pyx_locations} )
+
+	# add custom target = cython module.
+	add_custom_target( ${_name}
+		DEPENDS "_CYT${_name}"
+	)
+
+	include_directories( ${PYTHON_INCLUDE_DIRS} )
+
 endfunction()

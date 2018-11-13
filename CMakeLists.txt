@@ -69,6 +69,9 @@ endif ()
 ##############################################
 # projects
 
+# TODO: remove
+#add_subdirectory(projects/openfst_tt)
+
 # core openfst library.
 add_subdirectory(projects/openfst)
 
@@ -79,7 +82,7 @@ add_subdirectory(projects/openfst)
 add_subdirectory(projects/test)
 
 # examples.
-#add_subdirectory(projects/examples)
+add_subdirectory(projects/examples)
 
 # Python fst wrapper.
 add_subdirectory(src/python)

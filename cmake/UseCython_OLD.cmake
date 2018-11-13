@@ -80,7 +80,7 @@ set( CYTHON_C_EXTENSION "c" )
 # Create a *.c or *.cxx file from a *.pyx file.
 # Input the generated file basename.  The generate file will put into the variable
 # placed in the "generated_file" argument. Finally all the *.py and *.pyx files.
-function( compile_pyx _name generated_file )
+function( cythonize_pyx _name generated_file )
   # Default to assuming all files are C.
   set( cxx_arg "" )
   set( extension ${CYTHON_C_EXTENSION} )
@@ -272,14 +272,16 @@ function( cython_add_module _name )
       list( APPEND other_module_sources ${_file} )
     endif()
   endforeach()
-  compile_pyx( ${_name} generated_file ${pyx_module_sources} )
+  add_library( ${_name} MODULE )
+  cythonize_pyx( ${_name} generated_file ${pyx_module_sources} )
   include_directories( ${PYTHON_INCLUDE_DIRS} )
-  python_add_module( ${_name} ${generated_file} ${other_module_sources} )
-  if( APPLE )
-    set_target_properties( ${_name} PROPERTIES LINK_FLAGS "-undefined dynamic_lookup" )
-  else()
-    target_link_libraries( ${_name} ${PYTHON_LIBRARIES} )
-  endif()
+  # not required. Cythonize already creates a the pyd file.
+  #python_add_module( ${_name} ${generated_file} ${other_module_sources} )
+  #if( APPLE )
+  #  set_target_properties( ${_name} PROPERTIES LINK_FLAGS "-undefined dynamic_lookup" )
+  #else()
+  #  target_link_libraries( ${_name} ${PYTHON_LIBRARIES} )
+  #endif()
 endfunction()
 
 include( CMakeParseArguments )

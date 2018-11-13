@@ -22,10 +22,14 @@ if (WIN32)
 	# global vcpkg static lib directory.
 	link_directories( "${VCPKG_ROOT_DIR}/installed/${WIN_BUILD_PREFIX}-windows-static/lib" )
 
+	# find psapi; required by dlfcn-win32.
+	find_library (PSAPI Psapi)
+
 	# libs.
 	set (LIBS 
 		mman.lib
 		dl.lib
+		psapi.lib
 	)
 
 	# check if libs exist.
@@ -122,5 +126,10 @@ set(SRCS
 
 # static library.
 add_library(${PROJECT_NAME} STATIC "${SRCS}")
+
+if (WIN32)
+	# ensure static (MT) build of library.
+	target_compile_options( ${PROJECT_NAME} PRIVATE /MT )
+endif ()
 
 target_link_libraries( ${PROJECT_NAME} ${LIBS} )

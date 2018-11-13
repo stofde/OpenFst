@@ -21,19 +21,6 @@ if (WIN32)
 	# global vcpkg static lib directory.
 	link_directories( "${VCPKG_ROOT_DIR}/installed/${WIN_BUILD_PREFIX}-windows-static/lib" )
 
-	# libs.
-	set (LIBS 
-		mman.lib
-		dl.lib
-	)
-
-	# check if libs exist.
-	if ( EXISTS "${VCPKG_ROOT_DIR}/installed/${WIN_BUILD_PREFIX}-windows-static/lib/mman.lib"
-	AND EXISTS "${VCPKG_ROOT_DIR}/installed/${WIN_BUILD_PREFIX}-windows-static/lib/dl.lib")
-	else()
-		message( FATAL_ERROR "Libraries'${LIBS}' not found" )
-	endif()
-
 else ()
 	#################################################
 	# linux instructions.
@@ -51,6 +38,9 @@ set(SRCS
 
 # executable.
 add_executable(${PROJECT_NAME} "${SRCS}")
+
+# ensure static build.
+target_compile_options( ${PROJECT_NAME} PRIVATE /MT )
 
 target_link_libraries(${PROJECT_NAME}
 	openfst_lib  # static openfst lib.

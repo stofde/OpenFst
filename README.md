@@ -18,3 +18,32 @@ when building the project with CMake.
 
 * dlfcn-win32:x64-windows-static
 * mman:x64-windows-static
+* psapi
+
+# windows stuff
+
+## how to determine whether build release or debug
+
+dumpbin /directives
+
+/MT		=> LIBCMT.LIB, LIBCPMT.LIB
+/MTd	=> LIBCMTD.LIB, LIBCPMTD.LIB
+/MD		=> MSVCRT.LIB, MSVCPRT.LIB
+/MDd	=> MSVCRTD.LIB, MSVCPRTD.LIB
+
+mman.lib|dl.lib 
+
+static relase 
+
+	/DEFAULTLIB LIBCMT => MT
+
+static debug 
+
+	/DEFAULTLIB LIBCMTD => MTd
+
+openfst.lib
+
+?  
+	/DEFAULTLIB:msvcprt
+	/FAILIFMISMATCH:_CRT_STDIO_ISO_WIDE_SPECIFIERS=0
+	/DEFAULTLIB:MSVCRT
